@@ -10,7 +10,6 @@ import (
 
 var normalStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#000000"))
 var cursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#dfdfdf"))
-var cursorLineStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#9f9f9f"))
 
 const mapSizeX int = 30
 const mapSizeY int = 15
@@ -29,21 +28,39 @@ type Feature int
 const (
 	FeatureNone Feature = iota
 	FeatureVillage
-    FeatureCrop
+	FeatureCity
+	FeatureCrop
 )
 
-const FeatureChars string = " +,"
+const FeatureChars string = " +@,"
+
+type Civ struct {
+	name      string
+	tileStyle lipgloss.Style
+	cityNames []string
+}
+
+type City struct {
+	name       string
+	population int
+	owner      Civ
+	positionX  int
+	positionY  int
+}
 
 type Tile struct {
 	tileType TileType
 	feature  Feature
+	city     *City
 }
 
 type model struct {
-	hello   string
-	tileMap [mapSizeY][mapSizeX]Tile
-	cursorX int
-	cursorY int
+	hello        string
+	tileMap      [mapSizeY][mapSizeX]Tile
+	cursorX      int
+	cursorY      int
+	civs         []Civ
+	TEMPcivIndex int
 }
 
 func initialModel() model {
@@ -52,6 +69,17 @@ func initialModel() model {
 		tileMap: [mapSizeY][mapSizeX]Tile{},
 		cursorX: 5,
 		cursorY: 7,
+		civs: []Civ{
+			Civ{
+				name:      "TestCiv",
+				tileStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#6f0000")),
+			},
+			Civ{
+				name:      "TestCiv2",
+				tileStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#001f5f")),
+			},
+		},
+		TEMPcivIndex: 0,
 	}
 	m.tileMap[5][9].tileType = TileMountain
 	m.tileMap[6][7].feature = FeatureVillage
@@ -72,7 +100,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursorY -= 1
 			}
 		case "down":
-			if m.cursorY < mapSizeY - 1 {
+			if m.cursorY < mapSizeY-1 {
 				m.cursorY += 1
 			}
 		case "left":
@@ -80,11 +108,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursorX -= 1
 			}
 		case "right":
-			if m.cursorX < mapSizeX - 1 {
+			if m.cursorX < mapSizeX-1 {
 				m.cursorX += 1
 			}
 		case "enter":
-			m.tileMap[m.cursorY][m.cursorX].tileType = TileMountain
+			m.createCity(m.civs[m.TEMPcivIndex], m.cursorX, m.cursorY)
+			m.TEMPcivIndex = 1 - m.TEMPcivIndex
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		}
@@ -95,6 +124,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *model) createCity(civ Civ, x, y int) {
+	name := "Rome"
+	if civ.name == "TestCiv2" {
+		name = "London"
+	}
+	city := City{
+		name:       name,
+		population: 1,
+		owner:      civ,
+		positionX:  x,
+		positionY:  y,
+	}
+
+	m.tileMap[y][x].feature = FeatureCity
+	m.cultureBombTile(city, x, y)
+}
+
+func (m *model) cultureBombTile(city City, x, y int) {
+	for i := -1; i < 2; i++ {
+		for j := -1; j < 2; j++ {
+			if x+j >= 0 && x+j < mapSizeX && y+i >= 0 && y+i <= mapSizeY && m.tileMap[y+i][x+j].city == nil {
+				m.tileMap[y+i][x+j].city = &city
+			}
+		}
+	}
+}
+
 func (m model) View() string {
 	s := m.hello + "\n"
 	for i := 0; i < mapSizeY; i++ {
@@ -102,8 +158,8 @@ func (m model) View() string {
 			textStyle := normalStyle
 			if m.cursorX == j && m.cursorY == i {
 				textStyle = cursorStyle
-			} else if m.cursorX == j || m.cursorY == i {
-				textStyle = cursorLineStyle
+			} else if m.tileMap[i][j].city != nil {
+				textStyle = m.tileMap[i][j].city.owner.tileStyle
 			}
 			tileChar := TileChars[m.tileMap[i][j].tileType]
 			if m.tileMap[i][j].feature != FeatureNone {
@@ -122,6 +178,12 @@ func (m model) View() string {
 func (m model) getCursorHint() string {
 	cursorTile := m.tileMap[m.cursorY][m.cursorX]
 	s := ""
+	if cursorTile.city != nil {
+		s += fmt.Sprintf("%s - ", cursorTile.city.name)
+		if cursorTile.city.positionX == m.cursorX && cursorTile.city.positionY == m.cursorY {
+			s += "City, "
+		}
+	}
 	switch cursorTile.tileType {
 	case TilePlains:
 		s += "Plains"
@@ -131,7 +193,7 @@ func (m model) getCursorHint() string {
 	switch cursorTile.feature {
 	case FeatureVillage:
 		s += ", Village"
-    case FeatureCrop:
+	case FeatureCrop:
 		s += ", Crop"
 	}
 
