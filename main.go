@@ -12,6 +12,9 @@ var normalStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Back
 var cursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#dfdfdf"))
 var cursorLineStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#9f9f9f"))
 
+const mapSizeX int = 30
+const mapSizeY int = 15
+
 type TileType int
 
 const (
@@ -26,9 +29,10 @@ type Feature int
 const (
 	FeatureNone Feature = iota
 	FeatureVillage
+    FeatureCrop
 )
 
-const FeatureChars string = " +"
+const FeatureChars string = " +,"
 
 type Tile struct {
 	tileType TileType
@@ -37,7 +41,7 @@ type Tile struct {
 
 type model struct {
 	hello   string
-	tileMap [15][30]Tile
+	tileMap [mapSizeY][mapSizeX]Tile
 	cursorX int
 	cursorY int
 }
@@ -45,7 +49,7 @@ type model struct {
 func initialModel() model {
 	m := model{
 		hello:   "Hello World",
-		tileMap: [15][30]Tile{},
+		tileMap: [mapSizeY][mapSizeX]Tile{},
 		cursorX: 5,
 		cursorY: 7,
 	}
@@ -68,7 +72,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursorY -= 1
 			}
 		case "down":
-			if m.cursorY < 14 {
+			if m.cursorY < mapSizeY - 1 {
 				m.cursorY += 1
 			}
 		case "left":
@@ -76,7 +80,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursorX -= 1
 			}
 		case "right":
-			if m.cursorX < 29 {
+			if m.cursorX < mapSizeX - 1 {
 				m.cursorX += 1
 			}
 		case "enter":
@@ -93,8 +97,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	s := m.hello + "\n"
-	for i := 0; i < 15; i++ {
-		for j := 0; j < 30; j++ {
+	for i := 0; i < mapSizeY; i++ {
+		for j := 0; j < mapSizeX; j++ {
 			textStyle := normalStyle
 			if m.cursorX == j && m.cursorY == i {
 				textStyle = cursorStyle
@@ -127,6 +131,8 @@ func (m model) getCursorHint() string {
 	switch cursorTile.feature {
 	case FeatureVillage:
 		s += ", Village"
+    case FeatureCrop:
+		s += ", Crop"
 	}
 
 	return s
