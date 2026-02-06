@@ -109,13 +109,13 @@ func (m model) View() string {
 		}
 		s += "\n"
 	}
-	s += m.GetCursorHint()
+	s += m.getCursorHint()
 	s += "\nPress q to quit.\n"
 
 	return s
 }
 
-func (m model) GetCursorHint() string {
+func (m model) getCursorHint() string {
 	cursorTile := m.tileMap[m.cursorY][m.cursorX]
 	s := ""
 	switch cursorTile.tileType {
