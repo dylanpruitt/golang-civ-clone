@@ -21,8 +21,18 @@ const (
 
 const TileChars string = ".^"
 
+type Feature int
+
+const (
+	FeatureNone Feature = iota
+	FeatureVillage
+)
+
+const FeatureChars string = " +"
+
 type Tile struct {
 	tileType TileType
+	feature  Feature
 }
 
 type model struct {
@@ -33,12 +43,16 @@ type model struct {
 }
 
 func initialModel() model {
-	return model{
+	m := model{
 		hello:   "Hello World",
 		tileMap: [15][30]Tile{},
 		cursorX: 5,
 		cursorY: 7,
 	}
+	m.tileMap[5][9].tileType = TileMountain
+	m.tileMap[6][7].feature = FeatureVillage
+
+	return m
 }
 
 func (m model) Init() tea.Cmd {
@@ -87,11 +101,33 @@ func (m model) View() string {
 			} else if m.cursorX == j || m.cursorY == i {
 				textStyle = cursorLineStyle
 			}
-			s += textStyle.Render(string(TileChars[m.tileMap[i][j].tileType]))
+			tileChar := TileChars[m.tileMap[i][j].tileType]
+			if m.tileMap[i][j].feature != FeatureNone {
+				tileChar = FeatureChars[m.tileMap[i][j].feature]
+			}
+			s += textStyle.Render(string(tileChar))
 		}
 		s += "\n"
 	}
+	s += m.GetCursorHint()
 	s += "\nPress q to quit.\n"
+
+	return s
+}
+
+func (m model) GetCursorHint() string {
+	cursorTile := m.tileMap[m.cursorY][m.cursorX]
+	s := ""
+	switch cursorTile.tileType {
+	case TilePlains:
+		s += "Plains"
+	case TileMountain:
+		s += "Mountain"
+	}
+	switch cursorTile.feature {
+	case FeatureVillage:
+		s += ", Village"
+	}
 
 	return s
 }
