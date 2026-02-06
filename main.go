@@ -54,29 +54,63 @@ type Tile struct {
 	city     *City
 }
 
+type UnitType int
+
+const (
+	UnitWarrior UnitType = iota
+)
+
+const UnitChars string = "w"
+
+type Unit struct {
+	name      string
+	unitType  UnitType
+	positionX int
+	positionY int
+	owner     Civ
+}
+
+type UIState int
+
+const (
+	UIStateWaitingForInput UIState = iota
+	UIStatePickingAction
+)
+
 type model struct {
-	hello        string
+	uiState      UIState
 	tileMap      [mapSizeY][mapSizeX]Tile
 	cursorX      int
 	cursorY      int
 	civs         []Civ
+	units        []Unit
 	TEMPcivIndex int
 }
 
 func initialModel() model {
+	civ0 := Civ{
+		name:      "TestCiv",
+		tileStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#6f0000")),
+	}
 	m := model{
-		hello:   "Hello World",
+		uiState: UIStateWaitingForInput,
 		tileMap: [mapSizeY][mapSizeX]Tile{},
 		cursorX: 5,
 		cursorY: 7,
 		civs: []Civ{
-			Civ{
-				name:      "TestCiv",
-				tileStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#6f0000")),
-			},
+			civ0,
 			Civ{
 				name:      "TestCiv2",
 				tileStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#001f5f")),
+			},
+		},
+		units: []Unit{
+			Unit{
+				name:      "Warrior",
+				unitType:  UnitWarrior,
+				positionX: 6,
+				positionY: 6,
+				owner:     civ0,
 			},
 		},
 		TEMPcivIndex: 0,
@@ -152,7 +186,7 @@ func (m *model) cultureBombTile(city City, x, y int) {
 }
 
 func (m model) View() string {
-	s := m.hello + "\n"
+    s := ""
 	for i := 0; i < mapSizeY; i++ {
 		for j := 0; j < mapSizeX; j++ {
 			textStyle := normalStyle
@@ -162,9 +196,15 @@ func (m model) View() string {
 				textStyle = m.tileMap[i][j].city.owner.tileStyle
 			}
 			tileChar := TileChars[m.tileMap[i][j].tileType]
-			if m.tileMap[i][j].feature != FeatureNone {
-				tileChar = FeatureChars[m.tileMap[i][j].feature]
+			unitOnTile := m.getUnitOnTile(i, j)
+			if unitOnTile != nil {
+				tileChar = UnitChars[unitOnTile.unitType]
+			} else {
+				if m.tileMap[i][j].feature != FeatureNone {
+					tileChar = FeatureChars[m.tileMap[i][j].feature]
+				}
 			}
+
 			s += textStyle.Render(string(tileChar))
 		}
 		s += "\n"
@@ -178,8 +218,13 @@ func (m model) View() string {
 func (m model) getCursorHint() string {
 	cursorTile := m.tileMap[m.cursorY][m.cursorX]
 	s := ""
+
+	unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
+	if unitOnTile != nil {
+		s += fmt.Sprintf("%s, ", unitOnTile.name)
+	}
 	if cursorTile.city != nil {
-		s += fmt.Sprintf("%s - ", cursorTile.city.name)
+		s = fmt.Sprintf("%s - %s", cursorTile.city.name, s)
 		if cursorTile.city.positionX == m.cursorX && cursorTile.city.positionY == m.cursorY {
 			s += "City, "
 		}
@@ -198,6 +243,15 @@ func (m model) getCursorHint() string {
 	}
 
 	return s
+}
+
+func (m model) getUnitOnTile(x, y int) *Unit {
+	for _, u := range m.units {
+		if u.positionX == x && u.positionY == y {
+			return &u
+		}
+	}
+	return nil
 }
 
 func main() {
