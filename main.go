@@ -178,7 +178,7 @@ func (m *model) createCity(civ Civ, x, y int) {
 func (m *model) cultureBombTile(city City, x, y int) {
 	for i := -1; i < 2; i++ {
 		for j := -1; j < 2; j++ {
-			if x+j >= 0 && x+j < mapSizeX && y+i >= 0 && y+i <= mapSizeY && m.tileMap[y+i][x+j].city == nil {
+			if x+j >= 0 && x+j < mapSizeX && y+i >= 0 && y+i < mapSizeY && m.tileMap[y+i][x+j].city == nil {
 				m.tileMap[y+i][x+j].city = &city
 			}
 		}
