@@ -186,7 +186,7 @@ func (m *model) cultureBombTile(city City, x, y int) {
 }
 
 func (m model) View() string {
-    s := ""
+	s := ""
 	for i := 0; i < mapSizeY; i++ {
 		for j := 0; j < mapSizeX; j++ {
 			textStyle := normalStyle
@@ -199,6 +199,9 @@ func (m model) View() string {
 			unitOnTile := m.getUnitOnTile(i, j)
 			if unitOnTile != nil {
 				tileChar = UnitChars[unitOnTile.unitType]
+				if m.cursorX != j || m.cursorY != i {
+					textStyle = unitOnTile.owner.tileStyle
+				}
 			} else {
 				if m.tileMap[i][j].feature != FeatureNone {
 					tileChar = FeatureChars[m.tileMap[i][j].feature]
@@ -221,7 +224,7 @@ func (m model) getCursorHint() string {
 
 	unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
 	if unitOnTile != nil {
-		s += fmt.Sprintf("%s, ", unitOnTile.name)
+		s += fmt.Sprintf("%s (%s), ", unitOnTile.name, unitOnTile.owner.name)
 	}
 	if cursorTile.city != nil {
 		s = fmt.Sprintf("%s - %s", cursorTile.city.name, s)
