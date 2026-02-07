@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	lipgloss "github.com/charmbracelet/lipgloss"
 )
@@ -11,6 +13,32 @@ import (
 var normalStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#000000"))
 var cursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#dfdfdf"))
 var highlightColor = lipgloss.Color("#dfdf00")
+
+type keyMap struct {
+	Enter key.Binding
+	Quit  key.Binding
+}
+
+func (k keyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Enter, k.Quit}
+}
+
+func (k keyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Enter, k.Quit},
+	}
+}
+
+var keys = keyMap{
+	Enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "submit"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q/ctrl+c", "quit"),
+	),
+}
 
 const mapSizeX int = 30
 const mapSizeY int = 15
@@ -90,6 +118,8 @@ type model struct {
 	civs         []Civ
 	units        []Unit
 	selectedUnit *Unit
+	help         help.Model
+	keys         keyMap
 }
 
 func initialModel() model {
@@ -127,6 +157,8 @@ func initialModel() model {
 			},
 		},
 		selectedUnit: nil,
+		help:         help.New(),
+		keys:         keys,
 	}
 	m.tileMap[5][9].tileType = TileMountain
 	m.tileMap[6][7].feature = FeatureVillage
@@ -189,10 +221,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-		return m, nil
 	}
 
+	m.setContextAwareHelpMessages()
+
 	return m, nil
+}
+
+func (m *model) setContextAwareHelpMessages() {
+	m.keys.Enter.SetEnabled(true)
+	switch m.uiState {
+	case UIStateWaitingForInput:
+		unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
+		if unitOnTile != nil {
+			m.keys.Enter.SetHelp("enter", "select unit")
+		} else {
+			m.keys.Enter.SetEnabled(false)
+		}
+	case UIStatePickingAction:
+		if m.selectedUnit.positionX == m.cursorX && m.selectedUnit.positionY == m.cursorY && m.tileMap[m.cursorY][m.cursorX].feature == FeatureVillage {
+			m.keys.Enter.SetHelp("enter", "capture village")
+		} else {
+			m.keys.Enter.SetHelp("enter", "move unit")
+		}
+	}
 }
 
 func (m *model) captureVillageAtPositionWithUnit(x, y int, u *Unit) {
@@ -262,6 +314,7 @@ func (m model) View() string {
 	s += m.getCursorHint()
 
 	s += "\nPress q to quit.\n"
+	s += m.help.View(m.keys)
 
 	return s
 }
@@ -279,7 +332,7 @@ func (m model) getCursorHint() string {
 		s += ", "
 	}
 	if cursorTile.city != nil {
-        styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
+		styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
 		s = fmt.Sprintf("%s - %s", styledCityName, s)
 		if cursorTile.city.positionX == m.cursorX && cursorTile.city.positionY == m.cursorY {
 			s += "City, "
