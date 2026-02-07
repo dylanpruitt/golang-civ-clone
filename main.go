@@ -169,7 +169,7 @@ func initialModel() model {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.SetWindowTitle("Grocery List")
+	return tea.SetWindowTitle("Civ Clone")
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
