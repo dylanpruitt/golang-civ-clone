@@ -97,6 +97,10 @@ func initialModel() model {
 		name:      "TestCiv",
 		tileStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#6f0000")),
 	}
+	civ1 := Civ{
+		name:      "TestCiv2",
+		tileStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#001f5f")),
+	}
 	m := model{
 		uiState: UIStateWaitingForInput,
 		tileMap: [mapSizeY][mapSizeX]Tile{},
@@ -104,10 +108,7 @@ func initialModel() model {
 		cursorY: 7,
 		civs: []Civ{
 			civ0,
-			Civ{
-				name:      "TestCiv2",
-				tileStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#001f5f")),
-			},
+			civ1,
 		},
 		units: []Unit{
 			Unit{
@@ -117,11 +118,19 @@ func initialModel() model {
 				positionY: 6,
 				owner:     &civ0,
 			},
+			Unit{
+				name:      "Warrior",
+				unitType:  UnitWarrior,
+				positionX: 8,
+				positionY: 6,
+				owner:     &civ1,
+			},
 		},
 		selectedUnit: nil,
 	}
 	m.tileMap[5][9].tileType = TileMountain
 	m.tileMap[6][7].feature = FeatureVillage
+	m.tileMap[8][8].feature = FeatureVillage
 	m.tileMap[11][22].feature = FeatureVillage
 
 	return m
