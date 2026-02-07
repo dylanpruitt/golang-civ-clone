@@ -73,7 +73,7 @@ type Civ struct {
 type City struct {
 	name       string
 	population int
-	owner      Civ
+	owner      *Civ
 	positionX  int
 	positionY  int
 }
@@ -225,8 +225,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case UIStatePickingAction:
 				if m.selectedUnit != nil {
-					if m.cursorX == m.selectedUnit.positionX && m.cursorY == m.selectedUnit.positionY && m.tileMap[m.cursorY][m.cursorX].feature == FeatureVillage {
-						m.captureVillageAtPositionWithUnit(m.cursorX, m.cursorY, m.selectedUnit)
+					if m.cursorX == m.selectedUnit.positionX && m.cursorY == m.selectedUnit.positionY {
+						if m.tileMap[m.cursorY][m.cursorX].feature == FeatureVillage {
+							m.captureVillageAtPositionWithUnit(m.cursorX, m.cursorY, m.selectedUnit)
+						} else if m.tileMap[m.cursorY][m.cursorX].feature == FeatureCity && m.tileMap[m.cursorY][m.cursorX].city.owner != m.selectedUnit.owner {
+							m.captureCityAtPositionWithUnit(m.cursorX, m.cursorY, m.selectedUnit)
+						}
 					} else {
 						m.selectedUnit.moveTo(m.cursorX, m.cursorY)
 						m.log.message = "You move the Warrior."
@@ -263,8 +267,12 @@ func (m *model) setContextAwareHelpMessages() {
 			m.keys.Enter.SetEnabled(false)
 		}
 	case UIStatePickingAction:
-		if m.selectedUnit.positionX == m.cursorX && m.selectedUnit.positionY == m.cursorY && m.tileMap[m.cursorY][m.cursorX].feature == FeatureVillage {
-			m.keys.Enter.SetHelp("enter", "capture village")
+		if m.selectedUnit.positionX == m.cursorX && m.selectedUnit.positionY == m.cursorY {
+			if m.tileMap[m.cursorY][m.cursorX].feature == FeatureVillage {
+				m.keys.Enter.SetHelp("enter", "capture village")
+			} else if m.tileMap[m.cursorY][m.cursorX].feature == FeatureCity && m.tileMap[m.cursorY][m.cursorX].city.owner != m.selectedUnit.owner {
+				m.keys.Enter.SetHelp("enter", "capture city")
+			}
 		} else {
 			m.keys.Enter.SetHelp("enter", "move unit")
 		}
@@ -283,10 +291,10 @@ func (m *model) captureVillageAtPositionWithUnit(x, y int, u *Unit) {
 	if m.tileMap[m.cursorY][m.cursorX].feature != FeatureVillage {
 		return
 	}
-	m.createCity(*u.owner, x, y)
+	m.createCity(u.owner, x, y)
 }
 
-func (m *model) createCity(civ Civ, x, y int) {
+func (m *model) createCity(civ *Civ, x, y int) {
 	name := "Rome"
 	if civ.name == "TestCiv2" {
 		name = "London"
@@ -311,6 +319,13 @@ func (m *model) cultureBombTile(city City, x, y int) {
 			}
 		}
 	}
+}
+
+func (m *model) captureCityAtPositionWithUnit(x, y int, u *Unit) {
+	if m.tileMap[m.cursorY][m.cursorX].feature != FeatureCity || m.tileMap[m.cursorY][m.cursorX].city.owner == u.owner {
+		return
+	}
+	m.tileMap[m.cursorY][m.cursorX].city.owner = u.owner
 }
 
 func tileInCityRange(x, y int, city City) bool {
