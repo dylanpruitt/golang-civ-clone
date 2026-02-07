@@ -66,6 +66,7 @@ const FeatureChars string = " +@,#"
 
 type Civ struct {
 	name      string
+	id        int
 	tileStyle lipgloss.Style
 }
 
@@ -111,6 +112,11 @@ const (
 	UIStatePickingAction
 )
 
+type Log struct {
+	message        string
+	hideNextUpdate bool
+}
+
 type model struct {
 	uiState      UIState
 	tileMap      [mapSizeY][mapSizeX]Tile
@@ -121,15 +127,18 @@ type model struct {
 	selectedUnit *Unit
 	help         help.Model
 	keys         keyMap
+	log          Log
 }
 
 func initialModel() model {
 	civ0 := Civ{
 		name:      "TestCiv",
+		id:        0,
 		tileStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#6f0000")),
 	}
 	civ1 := Civ{
 		name:      "TestCiv2",
+		id:        1,
 		tileStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#001f5f")),
 	}
 	m := model{
@@ -160,6 +169,10 @@ func initialModel() model {
 		selectedUnit: nil,
 		help:         help.New(),
 		keys:         keys,
+		log: Log{
+			message:        "",
+			hideNextUpdate: true,
+		},
 	}
 	m.tileMap[5][9].tileType = TileMountain
 	m.tileMap[6][7].feature = FeatureVillage
@@ -178,6 +191,7 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.log.message = ""
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -215,6 +229,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.captureVillageAtPositionWithUnit(m.cursorX, m.cursorY, m.selectedUnit)
 					} else {
 						m.selectedUnit.moveTo(m.cursorX, m.cursorY)
+						m.log.message = "You move the Warrior."
 					}
 				}
 				m.selectedUnit = nil
@@ -345,6 +360,9 @@ func (m model) View() string {
 
 	s = lipgloss.JoinHorizontal(lipgloss.Top, s, " ", m.getInfoPanel())
 	s = lipgloss.JoinVertical(lipgloss.Left, s, m.getCursorHint())
+	if m.log.message != "" {
+		s = lipgloss.JoinVertical(lipgloss.Left, s, m.getLog())
+	}
 	s = lipgloss.JoinVertical(lipgloss.Left, s, m.help.View(m.keys))
 
 	return s
@@ -383,6 +401,10 @@ func (m model) getInfoPanel() string {
 	}
 
 	return s
+}
+
+func (m model) getLog() string {
+	return fmt.Sprintf("[!] %s", m.log.message)
 }
 
 func (m model) getCursorHint() string {
