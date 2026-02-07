@@ -272,14 +272,15 @@ func (m model) getCursorHint() string {
 
 	unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
 	if unitOnTile != nil {
-		s += fmt.Sprintf("%s", unitOnTile.name)
+		s += unitOnTile.owner.tileStyle.Render(unitOnTile.name)
 		if m.selectedUnit != nil && unitOnTile == m.selectedUnit {
 			s += " (Selected)"
 		}
 		s += ", "
 	}
 	if cursorTile.city != nil {
-		s = fmt.Sprintf("%s - %s", cursorTile.city.name, s)
+        styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
+		s = fmt.Sprintf("%s - %s", styledCityName, s)
 		if cursorTile.city.positionX == m.cursorX && cursorTile.city.positionY == m.cursorY {
 			s += "City, "
 		}
