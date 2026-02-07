@@ -59,9 +59,10 @@ const (
 	FeatureVillage
 	FeatureCity
 	FeatureCrop
+	FeatureFarm
 )
 
-const FeatureChars string = " +@,"
+const FeatureChars string = " +@,#"
 
 type Civ struct {
 	name      string
@@ -163,6 +164,10 @@ func initialModel() model {
 	m.tileMap[5][9].tileType = TileMountain
 	m.tileMap[6][7].feature = FeatureVillage
 	m.tileMap[8][8].feature = FeatureVillage
+	m.tileMap[8][9].feature = FeatureCrop
+	m.tileMap[8][10].feature = FeatureCrop
+	m.tileMap[8][11].feature = FeatureCrop
+	m.tileMap[8][12].feature = FeatureCrop
 	m.tileMap[11][22].feature = FeatureVillage
 
 	return m
@@ -199,6 +204,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if unitOnTile != nil {
 					m.selectedUnit = unitOnTile
 					m.uiState = UIStatePickingAction
+				}
+
+				if m.tileMap[m.cursorY][m.cursorX].feature == FeatureCrop {
+					m.createFarm(m.cursorX, m.cursorY)
 				}
 			case UIStatePickingAction:
 				if m.selectedUnit != nil {
@@ -245,6 +254,14 @@ func (m *model) setContextAwareHelpMessages() {
 			m.keys.Enter.SetHelp("enter", "move unit")
 		}
 	}
+}
+
+func (m *model) createFarm(x, y int) {
+	if m.tileMap[m.cursorY][m.cursorX].city == nil {
+		return
+	}
+	m.tileMap[m.cursorY][m.cursorX].feature = FeatureFarm
+	m.cultureBombTile(*m.tileMap[m.cursorY][m.cursorX].city, x, y)
 }
 
 func (m *model) captureVillageAtPositionWithUnit(x, y int, u *Unit) {
@@ -309,12 +326,49 @@ func (m model) View() string {
 
 			s += textStyle.Render(string(tileChar))
 		}
-		s += "\n"
+		if i < mapSizeY-1 {
+			s += "\n"
+		}
 	}
-	s += m.getCursorHint()
 
-	s += "\nPress q to quit.\n"
-	s += m.help.View(m.keys)
+	s = lipgloss.JoinHorizontal(lipgloss.Top, s, " ", m.getInfoPanel())
+	s = lipgloss.JoinVertical(lipgloss.Left, s, m.getCursorHint())
+	s = lipgloss.JoinVertical(lipgloss.Left, s, m.help.View(m.keys))
+
+	return s
+}
+
+func (m model) getInfoPanel() string {
+	cursorTile := m.tileMap[m.cursorY][m.cursorX]
+	s := "Info\n"
+
+	unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
+	if unitOnTile != nil {
+		s += unitOnTile.owner.tileStyle.Render(unitOnTile.name)
+		if m.selectedUnit != nil && unitOnTile == m.selectedUnit {
+			s += " (Selected)"
+		}
+		// TODO replace with Unit describe function
+		s += "\n  Basic unit.\n"
+	}
+	if cursorTile.city != nil {
+		styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
+		s += styledCityName + "\n"
+	}
+	switch cursorTile.tileType {
+	case TilePlains:
+		s += "Plains\n  1 movement cost\n"
+	case TileMountain:
+		s += "Mountain\n  2 movement cost\n"
+	}
+	switch cursorTile.feature {
+	case FeatureVillage:
+		s += "Village\n  Move a unit here to capture"
+	case FeatureCrop:
+		s += "Crop\n  Can build a Farm here"
+	case FeatureFarm:
+		s += "Farm\n"
+	}
 
 	return s
 }
@@ -349,6 +403,8 @@ func (m model) getCursorHint() string {
 		s += ", Village"
 	case FeatureCrop:
 		s += ", Crop"
+	case FeatureFarm:
+		s += ", Farm"
 	}
 
 	return s
