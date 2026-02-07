@@ -10,6 +10,7 @@ import (
 
 var normalStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#000000"))
 var cursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#dfdfdf"))
+var highlightColor = lipgloss.Color("#dfdf00")
 
 const mapSizeX int = 30
 const mapSizeY int = 15
@@ -37,7 +38,6 @@ const FeatureChars string = " +@,"
 type Civ struct {
 	name      string
 	tileStyle lipgloss.Style
-	cityNames []string
 }
 
 type City struct {
@@ -67,7 +67,12 @@ type Unit struct {
 	unitType  UnitType
 	positionX int
 	positionY int
-	owner     Civ
+	owner     *Civ
+}
+
+func (u *Unit) moveTo(x, y int) {
+	u.positionX = x
+	u.positionY = y
 }
 
 type UIState int
@@ -84,7 +89,7 @@ type model struct {
 	cursorY      int
 	civs         []Civ
 	units        []Unit
-	TEMPcivIndex int
+	selectedUnit *Unit
 }
 
 func initialModel() model {
@@ -110,13 +115,14 @@ func initialModel() model {
 				unitType:  UnitWarrior,
 				positionX: 6,
 				positionY: 6,
-				owner:     civ0,
+				owner:     &civ0,
 			},
 		},
-		TEMPcivIndex: 0,
+		selectedUnit: nil,
 	}
 	m.tileMap[5][9].tileType = TileMountain
 	m.tileMap[6][7].feature = FeatureVillage
+	m.tileMap[11][22].feature = FeatureVillage
 
 	return m
 }
@@ -146,8 +152,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursorX += 1
 			}
 		case "enter":
-			m.createCity(m.civs[m.TEMPcivIndex], m.cursorX, m.cursorY)
-			m.TEMPcivIndex = 1 - m.TEMPcivIndex
+			switch m.uiState {
+			case UIStateWaitingForInput:
+				unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
+				if unitOnTile != nil {
+					m.selectedUnit = unitOnTile
+					m.uiState = UIStatePickingAction
+				}
+			case UIStatePickingAction:
+				if m.selectedUnit != nil {
+					if m.cursorX == m.selectedUnit.positionX && m.cursorY == m.selectedUnit.positionY && m.tileMap[m.cursorY][m.cursorX].feature == FeatureVillage {
+						m.captureVillageAtPositionWithUnit(m.cursorX, m.cursorY, m.selectedUnit)
+					} else {
+						m.selectedUnit.moveTo(m.cursorX, m.cursorY)
+					}
+				}
+				m.selectedUnit = nil
+				m.uiState = UIStateWaitingForInput
+			}
+		case "esc":
+			switch m.uiState {
+			case UIStatePickingAction:
+				m.selectedUnit = nil
+				m.uiState = UIStateWaitingForInput
+			}
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		}
@@ -156,6 +184,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *model) captureVillageAtPositionWithUnit(x, y int, u *Unit) {
+	if m.tileMap[m.cursorY][m.cursorX].feature != FeatureVillage {
+		return
+	}
+	m.createCity(*u.owner, x, y)
 }
 
 func (m *model) createCity(civ Civ, x, y int) {
@@ -196,11 +231,14 @@ func (m model) View() string {
 				textStyle = m.tileMap[i][j].city.owner.tileStyle
 			}
 			tileChar := TileChars[m.tileMap[i][j].tileType]
-			unitOnTile := m.getUnitOnTile(i, j)
+			unitOnTile := m.getUnitOnTile(j, i)
 			if unitOnTile != nil {
 				tileChar = UnitChars[unitOnTile.unitType]
 				if m.cursorX != j || m.cursorY != i {
 					textStyle = unitOnTile.owner.tileStyle
+					if unitOnTile == m.selectedUnit {
+						textStyle = textStyle.Foreground(highlightColor)
+					}
 				}
 			} else {
 				if m.tileMap[i][j].feature != FeatureNone {
@@ -213,6 +251,7 @@ func (m model) View() string {
 		s += "\n"
 	}
 	s += m.getCursorHint()
+
 	s += "\nPress q to quit.\n"
 
 	return s
@@ -224,7 +263,11 @@ func (m model) getCursorHint() string {
 
 	unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
 	if unitOnTile != nil {
-		s += fmt.Sprintf("%s (%s), ", unitOnTile.name, unitOnTile.owner.name)
+		s += fmt.Sprintf("%s", unitOnTile.name)
+		if m.selectedUnit != nil && unitOnTile == m.selectedUnit {
+			s += " (Selected)"
+		}
+		s += ", "
 	}
 	if cursorTile.city != nil {
 		s = fmt.Sprintf("%s - %s", cursorTile.city.name, s)
@@ -249,10 +292,14 @@ func (m model) getCursorHint() string {
 }
 
 func (m model) getUnitOnTile(x, y int) *Unit {
-	for _, u := range m.units {
+	unitIndex := -1
+	for i, u := range m.units {
 		if u.positionX == x && u.positionY == y {
-			return &u
+			unitIndex = i
 		}
+	}
+	if unitIndex > -1 {
+		return &m.units[unitIndex]
 	}
 	return nil
 }
