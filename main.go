@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -79,9 +80,10 @@ type City struct {
 }
 
 type Tile struct {
-	tileType TileType
-	feature  Feature
-	city     *City
+	tileType       TileType
+	feature        Feature
+	city           *City
+	validForAction bool
 }
 
 type UnitType int
@@ -93,11 +95,12 @@ const (
 const UnitChars string = "w"
 
 type Unit struct {
-	name      string
-	unitType  UnitType
-	positionX int
-	positionY int
-	owner     *Civ
+	name       string
+	unitType   UnitType
+	positionX  int
+	positionY  int
+	owner      *Civ
+	movePoints int
 }
 
 func (u *Unit) moveTo(x, y int) {
@@ -152,18 +155,20 @@ func initialModel() model {
 		},
 		units: []Unit{
 			Unit{
-				name:      "Warrior",
-				unitType:  UnitWarrior,
-				positionX: 6,
-				positionY: 6,
-				owner:     &civ0,
+				name:       "Warrior",
+				unitType:   UnitWarrior,
+				positionX:  6,
+				positionY:  6,
+				owner:      &civ0,
+				movePoints: 2,
 			},
 			Unit{
-				name:      "Warrior",
-				unitType:  UnitWarrior,
-				positionX: 8,
-				positionY: 6,
-				owner:     &civ1,
+				name:       "Warrior",
+				unitType:   UnitWarrior,
+				positionX:  8,
+				positionY:  6,
+				owner:      &civ1,
+				movePoints: 2,
 			},
 		},
 		selectedUnit: nil,
@@ -175,6 +180,11 @@ func initialModel() model {
 		},
 	}
 	m.tileMap[5][9].tileType = TileMountain
+	m.tileMap[7][7].tileType = TileMountain
+	m.tileMap[7][10].tileType = TileMountain
+	m.tileMap[4][2].tileType = TileMountain
+	m.tileMap[4][3].tileType = TileMountain
+	m.tileMap[4][4].tileType = TileMountain
 	m.tileMap[6][7].feature = FeatureVillage
 	m.tileMap[8][8].feature = FeatureVillage
 	m.tileMap[8][9].feature = FeatureCrop
@@ -238,6 +248,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.selectedUnit = nil
 				m.uiState = UIStateWaitingForInput
+			}
+		case "t":
+			if m.selectedUnit != nil {
+				m.setValidMoveTilesForUnit(m.selectedUnit)
 			}
 		case "esc":
 			switch m.uiState {
@@ -340,6 +354,75 @@ func tileInCityRange(x, y int, city City) bool {
 	return xDist <= 3 && yDist <= 3
 }
 
+type TileCost struct {
+	totalCost int
+	baseCost  int
+}
+
+func (m *model) setValidMoveTilesForUnit(u *Unit) {
+	tileCosts := [mapSizeY][mapSizeX]TileCost{}
+	validTiles := [][2]int{}
+	// reset tile costs, set tile unit is on to valid
+	for i := 0; i < mapSizeY; i++ {
+		for j := 0; j < mapSizeX; j++ {
+			if i == u.positionY && j == u.positionX {
+				tileCosts[i][j].totalCost = 0
+				tileCosts[i][j].baseCost = 0
+				validTiles = append(validTiles, [2]int{u.positionX, u.positionY})
+			} else {
+				tileCosts[i][j].totalCost = 99
+				tileCosts[i][j].baseCost = m.getTileMoveCost(j, i, u)
+				m.tileMap[i][j].validForAction = false
+			}
+		}
+	}
+
+	t := 0
+	for t < len(validTiles) {
+		tilePos := validTiles[t]
+		thisTc := tileCosts[tilePos[1]][tilePos[0]]
+		for i := -1; i < 2; i++ {
+			for j := -1; j < 2; j++ {
+				if tilePos[0]+j >= 0 && tilePos[0]+j < mapSizeX && tilePos[1]+i >= 0 && tilePos[1]+i < mapSizeY {
+					tc := &tileCosts[tilePos[1]+i][tilePos[0]+j]
+					oldTotalCost := tc.totalCost
+					newTotalCost := thisTc.totalCost + tc.baseCost
+					if newTotalCost < oldTotalCost {
+						tc.totalCost = newTotalCost
+					}
+
+					tilePos := [2]int{tilePos[0] + j, tilePos[1] + i}
+					if tc.totalCost <= u.movePoints && !slices.Contains(validTiles, tilePos) {
+						validTiles = append(validTiles, tilePos)
+					}
+				}
+			}
+		}
+		t++
+	}
+
+	for i := 0; i < len(validTiles); i++ {
+		t := validTiles[i]
+		m.tileMap[t[1]][t[0]].validForAction = true
+	}
+}
+
+func (m *model) getTileMoveCost(x, y int, u *Unit) int {
+	const IMPASSABLE int = 99
+	unitOnTile := m.getUnitOnTile(x, y)
+	if unitOnTile != nil && (u.positionX != unitOnTile.positionX || u.positionY != unitOnTile.positionY) {
+		return IMPASSABLE
+	} else {
+		switch m.tileMap[y][x].tileType {
+		case TileMountain:
+			// TODO handle case where Mountains are impassable without Climbing tech
+			return 2
+		default:
+			return 1
+		}
+	}
+}
+
 func (m model) View() string {
 	s := ""
 	for i := 0; i < mapSizeY; i++ {
@@ -363,6 +446,9 @@ func (m model) View() string {
 			} else {
 				if m.tileMap[i][j].feature != FeatureNone {
 					tileChar = FeatureChars[m.tileMap[i][j].feature]
+				}
+				if m.tileMap[i][j].validForAction {
+					textStyle = textStyle.Foreground(highlightColor)
 				}
 			}
 
@@ -460,11 +546,11 @@ func (m model) getCursorHint() string {
 }
 
 func (m model) getUnitOnTile(x, y int) *Unit {
-    for i := 0; i < len(m.units); i++ {
-       if m.units[i].positionX == x && m.units[i].positionY == y {
+	for i := 0; i < len(m.units); i++ {
+		if m.units[i].positionX == x && m.units[i].positionY == y {
 			return &m.units[i]
-		} 
-    }
+		}
+	}
 	return nil
 }
 
