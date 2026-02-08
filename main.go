@@ -227,6 +227,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
 				if unitOnTile != nil {
 					m.selectedUnit = unitOnTile
+					m.setValidMoveTilesForUnit(m.selectedUnit)
 					m.uiState = UIStatePickingAction
 				}
 
@@ -241,17 +242,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						} else if m.tileMap[m.cursorY][m.cursorX].feature == FeatureCity && m.tileMap[m.cursorY][m.cursorX].city.owner != m.selectedUnit.owner {
 							m.captureCityAtPositionWithUnit(m.cursorX, m.cursorY, m.selectedUnit)
 						}
-					} else {
+					} else if m.tileMap[m.cursorY][m.cursorX].validForAction {
 						m.selectedUnit.moveTo(m.cursorX, m.cursorY)
 						m.log.message = "You move the Warrior."
 					}
 				}
 				m.selectedUnit = nil
 				m.uiState = UIStateWaitingForInput
-			}
-		case "t":
-			if m.selectedUnit != nil {
-				m.setValidMoveTilesForUnit(m.selectedUnit)
 			}
 		case "esc":
 			switch m.uiState {
@@ -288,7 +285,11 @@ func (m *model) setContextAwareHelpMessages() {
 				m.keys.Enter.SetHelp("enter", "capture city")
 			}
 		} else {
-			m.keys.Enter.SetHelp("enter", "move unit")
+			if m.tileMap[m.cursorY][m.cursorX].validForAction {
+				m.keys.Enter.SetHelp("enter", "move unit")
+			} else {
+				m.keys.Enter.SetHelp("enter", "unselect unit")
+			}
 		}
 	}
 }
@@ -447,7 +448,7 @@ func (m model) View() string {
 				if m.tileMap[i][j].feature != FeatureNone {
 					tileChar = FeatureChars[m.tileMap[i][j].feature]
 				}
-				if m.tileMap[i][j].validForAction {
+				if m.uiState == UIStatePickingAction && m.tileMap[i][j].validForAction {
 					textStyle = textStyle.Foreground(highlightColor)
 				}
 			}
