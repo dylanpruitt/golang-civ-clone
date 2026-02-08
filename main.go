@@ -460,15 +460,11 @@ func (m model) getCursorHint() string {
 }
 
 func (m model) getUnitOnTile(x, y int) *Unit {
-	unitIndex := -1
-	for i, u := range m.units {
-		if u.positionX == x && u.positionY == y {
-			unitIndex = i
-		}
-	}
-	if unitIndex > -1 {
-		return &m.units[unitIndex]
-	}
+    for i := 0; i < len(m.units); i++ {
+       if m.units[i].positionX == x && m.units[i].positionY == y {
+			return &m.units[i]
+		} 
+    }
 	return nil
 }
 
