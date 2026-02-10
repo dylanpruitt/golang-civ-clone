@@ -489,7 +489,7 @@ func (m model) View() string {
 				tileChar = '?'
 			}
 
-			if m.uiState == UIStatePickingAction && m.tileMap[i][j].validForAction {
+			if m.uiState == UIStatePickingAction && m.tileMap[i][j].validForAction && (m.cursorX != j || m.cursorY != i) {
 				textStyle = textStyle.Foreground(highlightColor)
 			}
 
