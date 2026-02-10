@@ -314,6 +314,7 @@ func (m *model) createFarm(x, y int) {
 	}
 	m.tileMap[m.cursorY][m.cursorX].feature = FeatureFarm
 	m.cultureBombTile(*m.tileMap[m.cursorY][m.cursorX].city, x, y)
+	m.revealTilesFromPos(x, y, 1, m.tileMap[m.cursorY][m.cursorX].city.owner)
 }
 
 func (m *model) captureVillageAtPositionWithUnit(x, y int, u *Unit) {
@@ -338,6 +339,7 @@ func (m *model) createCity(civ *Civ, x, y int) {
 
 	m.tileMap[y][x].feature = FeatureCity
 	m.cultureBombTile(city, x, y)
+	m.revealTilesFromPos(x, y, 2, civ)
 }
 
 func (m *model) cultureBombTile(city City, x, y int) {
