@@ -84,6 +84,12 @@ type Tile struct {
 	feature        Feature
 	city           *City
 	validForAction bool
+	discoveredBy   []int
+}
+
+func (t Tile) discoveredByPlayer() bool {
+	// assumes player ID will always be 0
+	return slices.Contains(t.discoveredBy, 0)
 }
 
 type UnitType int
@@ -106,6 +112,7 @@ type Unit struct {
 func (u *Unit) moveTo(x, y int) {
 	u.positionX = x
 	u.positionY = y
+
 }
 
 type UIState int
@@ -192,6 +199,7 @@ func initialModel() model {
 	m.tileMap[8][11].feature = FeatureCrop
 	m.tileMap[8][12].feature = FeatureCrop
 	m.tileMap[11][22].feature = FeatureVillage
+	m.revealTilesFromPos(6, 6, 1, &civ0)
 
 	return m
 }
@@ -225,7 +233,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.uiState {
 			case UIStateWaitingForInput:
 				unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
-				if unitOnTile != nil {
+				if unitOnTile != nil && m.tileMap[m.cursorY][m.cursorX].discoveredByPlayer() {
 					m.selectedUnit = unitOnTile
 					m.setValidMoveTilesForUnit(m.selectedUnit)
 					m.uiState = UIStatePickingAction
@@ -244,6 +252,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					} else if m.tileMap[m.cursorY][m.cursorX].validForAction {
 						m.selectedUnit.moveTo(m.cursorX, m.cursorY)
+						revealRange := 1
+						if m.tileMap[m.cursorY][m.cursorX].tileType == TileMountain {
+							revealRange = 2
+						}
+						m.revealTilesFromPos(m.cursorX, m.cursorY, revealRange, m.selectedUnit.owner)
 						m.log.message = "You move the Warrior."
 					}
 				}
@@ -272,7 +285,7 @@ func (m *model) setContextAwareHelpMessages() {
 	switch m.uiState {
 	case UIStateWaitingForInput:
 		unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
-		if unitOnTile != nil {
+		if unitOnTile != nil && m.tileMap[m.cursorY][m.cursorX].discoveredByPlayer() {
 			m.keys.Enter.SetHelp("enter", "select unit")
 		} else {
 			m.keys.Enter.SetEnabled(false)
@@ -424,33 +437,49 @@ func (m *model) getTileMoveCost(x, y int, u *Unit) int {
 	}
 }
 
+func (m *model) revealTilesFromPos(x, y, revealRange int, c *Civ) {
+	for i := -revealRange; i < revealRange+1; i++ {
+		for j := -revealRange; j < revealRange+1; j++ {
+			if x+j >= 0 && x+j < mapSizeX && y+i >= 0 && y+i < mapSizeY {
+				m.tileMap[y+i][x+j].discoveredBy = append(m.tileMap[y+i][x+j].discoveredBy, c.id)
+			}
+		}
+	}
+}
+
 func (m model) View() string {
 	s := ""
 	for i := 0; i < mapSizeY; i++ {
 		for j := 0; j < mapSizeX; j++ {
 			textStyle := normalStyle
+			var tileChar byte
 			if m.cursorX == j && m.cursorY == i {
 				textStyle = cursorStyle
 			} else if m.tileMap[i][j].city != nil {
 				textStyle = m.tileMap[i][j].city.owner.tileStyle
 			}
-			tileChar := TileChars[m.tileMap[i][j].tileType]
-			unitOnTile := m.getUnitOnTile(j, i)
-			if unitOnTile != nil {
-				tileChar = UnitChars[unitOnTile.unitType]
-				if m.cursorX != j || m.cursorY != i {
-					textStyle = unitOnTile.owner.tileStyle
-					if unitOnTile == m.selectedUnit {
+
+			if m.tileMap[i][j].discoveredByPlayer() {
+				tileChar = TileChars[m.tileMap[i][j].tileType]
+				unitOnTile := m.getUnitOnTile(j, i)
+				if unitOnTile != nil {
+					tileChar = UnitChars[unitOnTile.unitType]
+					if m.cursorX != j || m.cursorY != i {
+						textStyle = unitOnTile.owner.tileStyle
+						if unitOnTile == m.selectedUnit {
+							textStyle = textStyle.Foreground(highlightColor)
+						}
+					}
+				} else {
+					if m.tileMap[i][j].feature != FeatureNone {
+						tileChar = FeatureChars[m.tileMap[i][j].feature]
+					}
+					if m.uiState == UIStatePickingAction && m.tileMap[i][j].validForAction {
 						textStyle = textStyle.Foreground(highlightColor)
 					}
 				}
 			} else {
-				if m.tileMap[i][j].feature != FeatureNone {
-					tileChar = FeatureChars[m.tileMap[i][j].feature]
-				}
-				if m.uiState == UIStatePickingAction && m.tileMap[i][j].validForAction {
-					textStyle = textStyle.Foreground(highlightColor)
-				}
+				tileChar = '?'
 			}
 
 			s += textStyle.Render(string(tileChar))
@@ -474,32 +503,36 @@ func (m model) getInfoPanel() string {
 	cursorTile := m.tileMap[m.cursorY][m.cursorX]
 	s := "Info\n"
 
-	unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
-	if unitOnTile != nil {
-		s += unitOnTile.owner.tileStyle.Render(unitOnTile.name)
-		if m.selectedUnit != nil && unitOnTile == m.selectedUnit {
-			s += " (Selected)"
+	if cursorTile.discoveredByPlayer() {
+		unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
+		if unitOnTile != nil {
+			s += unitOnTile.owner.tileStyle.Render(unitOnTile.name)
+			if m.selectedUnit != nil && unitOnTile == m.selectedUnit {
+				s += " (Selected)"
+			}
+			// TODO replace with Unit describe function
+			s += "\n  Basic unit.\n"
 		}
-		// TODO replace with Unit describe function
-		s += "\n  Basic unit.\n"
-	}
-	if cursorTile.city != nil {
-		styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
-		s += styledCityName + "\n"
-	}
-	switch cursorTile.tileType {
-	case TilePlains:
-		s += "Plains\n  1 movement cost\n"
-	case TileMountain:
-		s += "Mountain\n  2 movement cost\n"
-	}
-	switch cursorTile.feature {
-	case FeatureVillage:
-		s += "Village\n  Move a unit here to capture"
-	case FeatureCrop:
-		s += "Crop\n  Can build a Farm here"
-	case FeatureFarm:
-		s += "Farm\n"
+		if cursorTile.city != nil {
+			styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
+			s += styledCityName + "\n"
+		}
+		switch cursorTile.tileType {
+		case TilePlains:
+			s += "Plains\n  1 movement cost\n"
+		case TileMountain:
+			s += "Mountain\n  2 movement cost\n"
+		}
+		switch cursorTile.feature {
+		case FeatureVillage:
+			s += "Village\n  Move a unit here to capture"
+		case FeatureCrop:
+			s += "Crop\n  Can build a Farm here"
+		case FeatureFarm:
+			s += "Farm\n"
+		}
+	} else {
+		s += "??? - Unexplored Tile"
 	}
 
 	return s
@@ -513,34 +546,38 @@ func (m model) getCursorHint() string {
 	cursorTile := m.tileMap[m.cursorY][m.cursorX]
 	s := ""
 
-	unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
-	if unitOnTile != nil {
-		s += unitOnTile.owner.tileStyle.Render(unitOnTile.name)
-		if m.selectedUnit != nil && unitOnTile == m.selectedUnit {
-			s += " (Selected)"
+	if cursorTile.discoveredByPlayer() {
+		unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
+		if unitOnTile != nil {
+			s += unitOnTile.owner.tileStyle.Render(unitOnTile.name)
+			if m.selectedUnit != nil && unitOnTile == m.selectedUnit {
+				s += " (Selected)"
+			}
+			s += ", "
 		}
-		s += ", "
-	}
-	if cursorTile.city != nil {
-		styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
-		s = fmt.Sprintf("%s - %s", styledCityName, s)
-		if cursorTile.city.positionX == m.cursorX && cursorTile.city.positionY == m.cursorY {
-			s += "City, "
+		if cursorTile.city != nil {
+			styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
+			s = fmt.Sprintf("%s - %s", styledCityName, s)
+			if cursorTile.city.positionX == m.cursorX && cursorTile.city.positionY == m.cursorY {
+				s += "City, "
+			}
 		}
-	}
-	switch cursorTile.tileType {
-	case TilePlains:
-		s += "Plains"
-	case TileMountain:
-		s += "Mountain"
-	}
-	switch cursorTile.feature {
-	case FeatureVillage:
-		s += ", Village"
-	case FeatureCrop:
-		s += ", Crop"
-	case FeatureFarm:
-		s += ", Farm"
+		switch cursorTile.tileType {
+		case TilePlains:
+			s += "Plains"
+		case TileMountain:
+			s += "Mountain"
+		}
+		switch cursorTile.feature {
+		case FeatureVillage:
+			s += ", Village"
+		case FeatureCrop:
+			s += ", Crop"
+		case FeatureFarm:
+			s += ", Farm"
+		}
+	} else {
+		s += "Unexplored"
 	}
 
 	return s
