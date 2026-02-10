@@ -13,6 +13,7 @@ import (
 
 var normalStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#dfdfdf")).Background(lipgloss.Color("#000000"))
 var cursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#dfdfdf"))
+var fogOfWarStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#9f9f9f"))
 var highlightColor = lipgloss.Color("#dfdf00")
 
 type keyMap struct {
@@ -453,13 +454,14 @@ func (m model) View() string {
 		for j := 0; j < mapSizeX; j++ {
 			textStyle := normalStyle
 			var tileChar byte
-			if m.cursorX == j && m.cursorY == i {
-				textStyle = cursorStyle
-			} else if m.tileMap[i][j].city != nil {
-				textStyle = m.tileMap[i][j].city.owner.tileStyle
-			}
 
 			if m.tileMap[i][j].discoveredByPlayer() {
+				if m.cursorX == j && m.cursorY == i {
+					textStyle = cursorStyle
+				} else if m.tileMap[i][j].city != nil {
+					textStyle = m.tileMap[i][j].city.owner.tileStyle
+				}
+
 				tileChar = TileChars[m.tileMap[i][j].tileType]
 				unitOnTile := m.getUnitOnTile(j, i)
 				if unitOnTile != nil {
@@ -474,12 +476,19 @@ func (m model) View() string {
 					if m.tileMap[i][j].feature != FeatureNone {
 						tileChar = FeatureChars[m.tileMap[i][j].feature]
 					}
-					if m.uiState == UIStatePickingAction && m.tileMap[i][j].validForAction {
-						textStyle = textStyle.Foreground(highlightColor)
-					}
 				}
 			} else {
+				if m.cursorX == j && m.cursorY == i {
+					textStyle = cursorStyle
+				} else {
+					textStyle = fogOfWarStyle
+				}
+
 				tileChar = '?'
+			}
+
+			if m.uiState == UIStatePickingAction && m.tileMap[i][j].validForAction {
+				textStyle = textStyle.Foreground(highlightColor)
 			}
 
 			s += textStyle.Render(string(tileChar))
