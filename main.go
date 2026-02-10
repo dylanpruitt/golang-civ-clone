@@ -139,6 +139,8 @@ type model struct {
 	help         help.Model
 	keys         keyMap
 	log          Log
+	screenWidth  int
+	screenHeight int
 }
 
 func initialModel() model {
@@ -201,6 +203,8 @@ func initialModel() model {
 	m.tileMap[8][12].feature = FeatureCrop
 	m.tileMap[11][22].feature = FeatureVillage
 	m.revealTilesFromPos(6, 6, 1, &civ0)
+	m.screenWidth = 80
+	m.screenHeight = 24
 
 	return m
 }
@@ -212,6 +216,9 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.log.message = ""
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.screenWidth = msg.Width
+		m.screenHeight = msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "up":
@@ -502,10 +509,13 @@ func (m model) View() string {
 
 	s = lipgloss.JoinHorizontal(lipgloss.Top, s, " ", m.getInfoPanel())
 	s = lipgloss.JoinVertical(lipgloss.Left, s, m.getCursorHint())
+
+	logString := ""
 	if m.log.message != "" {
-		s = lipgloss.JoinVertical(lipgloss.Left, s, m.getLog())
+		logString = m.getLog()
 	}
-	s = lipgloss.JoinVertical(lipgloss.Left, s, m.help.View(m.keys))
+	s = lipgloss.Place(m.screenWidth, m.screenHeight-2, lipgloss.Left, lipgloss.Top, lipgloss.JoinVertical(lipgloss.Left, s, logString))
+	s = lipgloss.JoinVertical(lipgloss.Left, s, lipgloss.PlaceVertical(2, lipgloss.Bottom, m.help.View(m.keys)))
 
 	return s
 }
