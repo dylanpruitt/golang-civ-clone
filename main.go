@@ -137,6 +137,21 @@ func (u *Unit) Attack(o *Unit) {
 	}
 }
 
+func makeWarrior(x, y int, owner *Civ) Unit {
+	return Unit{
+		name:       "Warrior",
+		unitType:   UnitWarrior,
+		hp:         4,
+		maxHp:      4,
+		attack:     3,
+		defense:    3,
+		positionX:  x,
+		positionY:  y,
+		owner:      owner,
+		movePoints: 2,
+	}
+}
+
 type UIState int
 
 const (
@@ -185,22 +200,9 @@ func initialModel() model {
 			civ1,
 		},
 		units: []Unit{
-			Unit{
-				name:       "Warrior",
-				unitType:   UnitWarrior,
-				positionX:  6,
-				positionY:  6,
-				owner:      &civ0,
-				movePoints: 2,
-			},
-			Unit{
-				name:       "Warrior",
-				unitType:   UnitWarrior,
-				positionX:  8,
-				positionY:  6,
-				owner:      &civ1,
-				movePoints: 2,
-			},
+			makeWarrior(6, 6, &civ0),
+			makeWarrior(7, 7, &civ0),
+			makeWarrior(8, 6, &civ1),
 		},
 		selectedUnit: nil,
 		help:         help.New(),
