@@ -104,6 +104,11 @@ const UnitChars string = "w"
 type Unit struct {
 	name       string
 	unitType   UnitType
+	hp         int
+	maxHp      int
+	attack     int
+	defense    int
+	kills      int
 	positionX  int
 	positionY  int
 	owner      *Civ
@@ -114,6 +119,22 @@ func (u *Unit) moveTo(x, y int) {
 	u.positionX = x
 	u.positionY = y
 
+}
+
+func (u *Unit) Attack(o *Unit) {
+	attackerDamage := int(float32(u.attack) * (float32(u.hp) / float32(u.maxHp)))
+	defenderDamage := int(float32(o.defense) * (float32(o.hp) / float32(o.maxHp)))
+
+	o.hp -= attackerDamage
+	if o.hp > 0 {
+		u.hp -= defenderDamage
+		if u.hp <= 0 {
+			o.kills++
+		}
+	} else {
+		u.moveTo(o.positionX, o.positionY)
+		u.kills++
+	}
 }
 
 type UIState int
