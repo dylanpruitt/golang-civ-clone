@@ -336,7 +336,13 @@ func (m *model) setContextAwareHelpMessages() {
 			}
 		} else {
 			if m.tileMap[m.cursorY][m.cursorX].validForAction {
-				m.keys.Enter.SetHelp("enter", "move unit")
+				unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
+				if unitOnTile != nil && m.selectedUnit.owner != unitOnTile.owner {
+					m.keys.Enter.SetHelp("enter", "attack unit")
+				} else {
+					// units can't move onto tiles with other units from the same civ
+					m.keys.Enter.SetHelp("enter", "move unit")
+				}
 			} else {
 				m.keys.Enter.SetHelp("enter", "unselect unit")
 			}
