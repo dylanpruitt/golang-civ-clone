@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"slices"
 
@@ -122,8 +123,8 @@ func (u *Unit) moveTo(x, y int) {
 }
 
 func (u *Unit) Attack(o *Unit) {
-	attackerDamage := int(float32(u.attack) * (float32(u.hp) / float32(u.maxHp)))
-	defenderDamage := int(float32(o.defense) * (float32(o.hp) / float32(o.maxHp)))
+	attackerDamage := int(math.Round(float64(u.attack) * (float64(u.hp) / float64(u.maxHp))))
+	defenderDamage := int(math.Round(float64(o.defense) * (float64(o.hp) / float64(o.maxHp))))
 
 	o.hp -= attackerDamage
 	if o.hp > 0 {
@@ -379,15 +380,23 @@ func (m *model) createCity(civ *Civ, x, y int) {
 
 func (m *model) runCombat(attacker *Unit, defender *Unit) {
 	attacker.Attack(defender)
-	if attacker.hp <= 0 {
-		slices.DeleteFunc(m.units, func(u Unit) bool {
-			return &u == attacker
-		})
+
+	delIndex := -1
+	for i := 0; i < len(m.units); i++ {
+		if &m.units[i] == attacker && attacker.hp <= 0 {
+			delIndex = i
+		}
 	}
-	if defender.hp <= 0 {
-		slices.DeleteFunc(m.units, func(u Unit) bool {
-			return &u == defender
-		})
+	if delIndex > -1 {
+		slices.Delete(m.units, delIndex, delIndex+1)
+	}
+	for i := 0; i < len(m.units); i++ {
+		if &m.units[i] == defender && defender.hp <= 0 {
+			delIndex = i
+		}
+	}
+	if delIndex > -1 {
+		slices.Delete(m.units, delIndex, delIndex+1)
 	}
 }
 
@@ -569,12 +578,7 @@ func (m model) getInfoPanel() string {
 	if cursorTile.discoveredByPlayer() {
 		unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
 		if unitOnTile != nil {
-			s += unitOnTile.owner.tileStyle.Render(unitOnTile.name)
-			if m.selectedUnit != nil && unitOnTile == m.selectedUnit {
-				s += " (Selected)"
-			}
-			// TODO replace with Unit describe function
-			s += "\n  Basic unit.\n"
+			s += m.describeUnit(unitOnTile)
 		}
 		if cursorTile.city != nil {
 			styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
@@ -598,6 +602,18 @@ func (m model) getInfoPanel() string {
 		s += "??? - Unexplored Tile"
 	}
 
+	return s
+}
+
+func (m model) describeUnit(u *Unit) string {
+	s := fmt.Sprintf("%s %d/%d HP", u.owner.tileStyle.Render(u.name), u.hp, u.maxHp)
+	if m.selectedUnit != nil && u == m.selectedUnit {
+		s += " (Selected)"
+	}
+	s += fmt.Sprintf("\n  %d ATK %d DEF %d MOVE\n", u.attack, u.defense, u.movePoints)
+	if u.kills > 0 {
+		s += fmt.Sprintf("  %d/2 kills to promotion\n", u.kills)
+	}
 	return s
 }
 
