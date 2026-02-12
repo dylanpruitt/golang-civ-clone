@@ -282,13 +282,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.captureCityAtPositionWithUnit(m.cursorX, m.cursorY, m.selectedUnit)
 						}
 					} else if m.tileMap[m.cursorY][m.cursorX].validForAction {
-						m.selectedUnit.moveTo(m.cursorX, m.cursorY)
-						revealRange := 1
-						if m.tileMap[m.cursorY][m.cursorX].tileType == TileMountain {
-							revealRange = 2
+						unitOnTile := m.getUnitOnTile(m.cursorX, m.cursorY)
+						if unitOnTile != nil && unitOnTile.owner != m.selectedUnit.owner {
+							m.runCombat(m.selectedUnit, unitOnTile)
+						} else {
+							m.selectedUnit.moveTo(m.cursorX, m.cursorY)
+							revealRange := 1
+							if m.tileMap[m.cursorY][m.cursorX].tileType == TileMountain {
+								revealRange = 2
+							}
+							m.revealTilesFromPos(m.cursorX, m.cursorY, revealRange, m.selectedUnit.owner)
+							m.log.message = "You move the Warrior."
 						}
-						m.revealTilesFromPos(m.cursorX, m.cursorY, revealRange, m.selectedUnit.owner)
-						m.log.message = "You move the Warrior."
 					}
 				}
 				m.selectedUnit = nil
@@ -370,6 +375,20 @@ func (m *model) createCity(civ *Civ, x, y int) {
 	m.tileMap[y][x].feature = FeatureCity
 	m.cultureBombTile(city, x, y)
 	m.revealTilesFromPos(x, y, 2, civ)
+}
+
+func (m *model) runCombat(attacker *Unit, defender *Unit) {
+	attacker.Attack(defender)
+	if attacker.hp <= 0 {
+		slices.DeleteFunc(m.units, func(u Unit) bool {
+			return &u == attacker
+		})
+	}
+	if defender.hp <= 0 {
+		slices.DeleteFunc(m.units, func(u Unit) bool {
+			return &u == defender
+		})
+	}
 }
 
 func (m *model) cultureBombTile(city City, x, y int) {
@@ -457,7 +476,7 @@ func (m *model) setValidMoveTilesForUnit(u *Unit) {
 func (m *model) getTileMoveCost(x, y int, u *Unit) int {
 	const IMPASSABLE int = 99
 	unitOnTile := m.getUnitOnTile(x, y)
-	if unitOnTile != nil && (u.positionX != unitOnTile.positionX || u.positionY != unitOnTile.positionY) {
+	if unitOnTile != nil && unitOnTile.owner == u.owner && (u.positionX != unitOnTile.positionX || u.positionY != unitOnTile.positionY) {
 		return IMPASSABLE
 	} else {
 		switch m.tileMap[y][x].tileType {
