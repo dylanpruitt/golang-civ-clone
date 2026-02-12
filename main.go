@@ -18,12 +18,13 @@ var fogOfWarStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Ba
 var highlightColor = lipgloss.Color("#dfdf00")
 
 type keyMap struct {
-	Enter key.Binding
-	Quit  key.Binding
+	MoveCursor key.Binding
+	Enter      key.Binding
+	Quit       key.Binding
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Enter, k.Quit}
+	return []key.Binding{k.MoveCursor, k.Enter, k.Quit}
 }
 
 func (k keyMap) FullHelp() [][]key.Binding {
@@ -33,6 +34,11 @@ func (k keyMap) FullHelp() [][]key.Binding {
 }
 
 var keys = keyMap{
+	// MoveCursor is currently ONLY used to render help a message for the cursor
+	MoveCursor: key.NewBinding(
+		key.WithKeys(""),
+		key.WithHelp("←/↑/↓/→", "move cursor"),
+	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "submit"),
@@ -119,7 +125,6 @@ type Unit struct {
 func (u *Unit) moveTo(x, y int) {
 	u.positionX = x
 	u.positionY = y
-
 }
 
 func (u *Unit) Attack(o *Unit) {
