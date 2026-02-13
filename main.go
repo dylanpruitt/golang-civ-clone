@@ -217,6 +217,11 @@ func (m model) View() string {
 				}
 
 				tileChar = TileChars[m.gameState.tileMap[i][j].tileType]
+
+				if m.uiState == UIStatePickingAction && m.gameState.tileMap[i][j].hasRoad {
+					tileChar = 'r'
+				}
+
 				unitOnTile := m.gameState.getUnitOnTile(j, i)
 				if unitOnTile != nil {
 					tileChar = UnitChars[unitOnTile.unitType]
