@@ -66,3 +66,23 @@ func (t Tile) getDescription() string {
 
 	return s
 }
+
+func (t Tile) getCursorHint() string {
+	s := ""
+	switch t.tileType {
+	case TilePlains:
+		s += "Plains"
+	case TileMountain:
+		s += "Mountain"
+	}
+	switch t.feature {
+	case FeatureVillage:
+		s += ", Village"
+	case FeatureCrop:
+		s += ", Crop"
+	case FeatureFarm:
+		s += ", Farm"
+	}
+
+	return s
+}

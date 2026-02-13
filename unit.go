@@ -50,3 +50,13 @@ func (u Unit) getDescription(isSelected bool) string {
 	}
 	return s
 }
+
+func (u Unit) getCursorHint(isSelected bool) string {
+    s := u.owner.tileStyle.Render(u.name)
+	if isSelected {
+		s += " (Selected)"
+	}
+	s += ", "
+
+	return s
+}

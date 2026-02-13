@@ -294,11 +294,8 @@ func (m model) getCursorHint() string {
 	if cursorTile.discoveredByPlayer() {
 		unitOnTile := m.gameState.getUnitOnTile(m.cursorX, m.cursorY)
 		if unitOnTile != nil {
-			s += unitOnTile.owner.tileStyle.Render(unitOnTile.name)
-			if m.selectedUnit != nil && unitOnTile == m.selectedUnit {
-				s += " (Selected)"
-			}
-			s += ", "
+            isSelected := unitOnTile == m.selectedUnit
+			s += unitOnTile.getCursorHint(isSelected)
 		}
 		if cursorTile.city != nil {
 			styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
@@ -307,20 +304,7 @@ func (m model) getCursorHint() string {
 				s += "City, "
 			}
 		}
-		switch cursorTile.tileType {
-		case TilePlains:
-			s += "Plains"
-		case TileMountain:
-			s += "Mountain"
-		}
-		switch cursorTile.feature {
-		case FeatureVillage:
-			s += ", Village"
-		case FeatureCrop:
-			s += ", Crop"
-		case FeatureFarm:
-			s += ", Farm"
-		}
+		s += cursorTile.getCursorHint()
 	} else {
 		s += "Unexplored"
 	}
