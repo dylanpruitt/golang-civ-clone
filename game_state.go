@@ -186,7 +186,7 @@ func (g *GameState) runCombatBetween(u *Unit, o *Unit) {
 func (g *GameState) cultureBombTile(city City, x, y int) {
 	for i := -1; i < 2; i++ {
 		for j := -1; j < 2; j++ {
-			if x+j >= 0 && x+j < mapSizeX && y+i >= 0 && y+i < mapSizeY && g.tileMap[y+i][x+j].city == nil && tileInCityRange(x+j, y+i, city) {
+			if positionInMapBounds(x+j, y+i) && g.tileMap[y+i][x+j].city == nil && tileInCityRange(x+j, y+i, city) {
 				g.tileMap[y+i][x+j].city = &city
 			}
 		}
@@ -241,7 +241,7 @@ func (g *GameState) setValidMoveTilesForUnit(u *Unit) {
 		thisTc := tileCosts[tilePos[1]][tilePos[0]]
 		for i := -1; i < 2; i++ {
 			for j := -1; j < 2; j++ {
-				if tilePos[0]+j >= 0 && tilePos[0]+j < mapSizeX && tilePos[1]+i >= 0 && tilePos[1]+i < mapSizeY {
+				if positionInMapBounds(tilePos[0]+j, tilePos[1]+i) {
 					tc := &tileCosts[tilePos[1]+i][tilePos[0]+j]
 					oldTotalCost := tc.totalCost
 					newTotalCost := thisTc.totalCost + tc.baseCost
@@ -284,11 +284,15 @@ func (g *GameState) getTileMoveCost(x, y int, u *Unit) int {
 func (g *GameState) revealTilesFromPos(x, y, revealRange int, c *Civ) {
 	for i := -revealRange; i < revealRange+1; i++ {
 		for j := -revealRange; j < revealRange+1; j++ {
-			if x+j >= 0 && x+j < mapSizeX && y+i >= 0 && y+i < mapSizeY {
+			if positionInMapBounds(x+j, y+i) {
 				g.tileMap[y+i][x+j].discoveredBy = append(g.tileMap[y+i][x+j].discoveredBy, c.id)
 			}
 		}
 	}
+}
+
+func positionInMapBounds(x, y int) bool {
+	return x >= 0 && x < mapSizeX && y >= 0 && y < mapSizeY
 }
 
 func (g GameState) getUnitOnTile(x, y int) *Unit {
