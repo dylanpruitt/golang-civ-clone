@@ -47,15 +47,21 @@ func (t Tile) getDescription() string {
 			styledCityName := t.city.owner.tileStyle.Render(t.city.name)
 			s += styledCityName + "\n"
 		}
+		moveCostString := ""
 		switch t.tileType {
 		case TilePlains:
-			s += "Plains\n  1 movement cost\n"
+			s += "Plains\n"
+			moveCostString = "  1 movement cost\n"
 		case TileMountain:
-			s += "Mountain\n  2 movement cost\n"
+			s += "Mountain\n"
+			moveCostString = "  2 movement cost\n"
 		}
 		if t.hasRoad {
-			s += "Road\n  0.25 movement cost\n"
+			s += "Road\n"
+			moveCostString = "  0.25 movement cost\n"
 		}
+		s += moveCostString
+
 		switch t.feature {
 		case FeatureVillage:
 			s += "Village\n  Move a unit here to capture"
