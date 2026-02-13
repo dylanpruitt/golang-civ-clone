@@ -10,18 +10,6 @@ import (
 const mapSizeX int = 30
 const mapSizeY int = 15
 
-type Feature int
-
-const (
-	FeatureNone Feature = iota
-	FeatureVillage
-	FeatureCity
-	FeatureCrop
-	FeatureFarm
-)
-
-const FeatureChars string = " +@,#"
-
 type Civ struct {
 	name      string
 	id        int

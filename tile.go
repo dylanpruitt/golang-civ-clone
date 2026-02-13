@@ -4,6 +4,18 @@ import (
 	"slices"
 )
 
+type Feature int
+
+const (
+	FeatureNone Feature = iota
+	FeatureVillage
+	FeatureCity
+	FeatureCrop
+	FeatureFarm
+)
+
+const FeatureChars string = " +@,#"
+
 type TileType int
 
 const (
