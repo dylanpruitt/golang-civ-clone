@@ -4,7 +4,7 @@ import (
 	"math"
 	"slices"
 
-    lipgloss "github.com/charmbracelet/lipgloss"
+	lipgloss "github.com/charmbracelet/lipgloss"
 )
 
 const mapSizeX int = 30
@@ -58,68 +58,10 @@ func (t Tile) discoveredByPlayer() bool {
 	return slices.Contains(t.discoveredBy, 0)
 }
 
-type UnitType int
-
-const (
-	UnitWarrior UnitType = iota
-)
-
-const UnitChars string = "w"
-
-type Unit struct {
-	name       string
-	unitType   UnitType
-	hp         int
-	maxHp      int
-	attack     int
-	defense    int
-	kills      int
-	positionX  int
-	positionY  int
-	owner      *Civ
-	movePoints int
-}
-
-func (u *Unit) moveTo(x, y int) {
-	u.positionX = x
-	u.positionY = y
-}
-
-func (u *Unit) Attack(o *Unit) {
-	attackerDamage := int(math.Round(float64(u.attack) * (float64(u.hp) / float64(u.maxHp))))
-	defenderDamage := int(math.Round(float64(o.defense) * (float64(o.hp) / float64(o.maxHp))))
-
-	o.hp -= attackerDamage
-	if o.hp > 0 {
-		u.hp -= defenderDamage
-		if u.hp <= 0 {
-			o.kills++
-		}
-	} else {
-		u.moveTo(o.positionX, o.positionY)
-		u.kills++
-	}
-}
-
-func makeWarrior(x, y int, owner *Civ) Unit {
-	return Unit{
-		name:       "Warrior",
-		unitType:   UnitWarrior,
-		hp:         4,
-		maxHp:      4,
-		attack:     3,
-		defense:    3,
-		positionX:  x,
-		positionY:  y,
-		owner:      owner,
-		movePoints: 2,
-	}
-}
-
 type GameState struct {
-    tileMap      [mapSizeY][mapSizeX]Tile
-	civs         []Civ
-	units        []Unit
+	tileMap [mapSizeY][mapSizeX]Tile
+	civs    []Civ
+	units   []Unit
 }
 
 func initialGameState() GameState {
@@ -163,8 +105,6 @@ func initialGameState() GameState {
 	return g
 }
 
-
-
 func (g *GameState) createFarm(x, y int) {
 	if g.tileMap[y][x].city == nil {
 		return
@@ -199,12 +139,34 @@ func (g *GameState) createCity(civ *Civ, x, y int) {
 	g.revealTilesFromPos(x, y, 2, civ)
 }
 
-func (g *GameState) runCombat(attacker *Unit, defender *Unit) {
-	attacker.Attack(defender)
+func (g *GameState) moveUnitTo(u *Unit, x, y int) {
+	u.positionX = x
+	u.positionY = y
+	revealRange := 1
+	if g.tileMap[y][x].tileType == TileMountain {
+		revealRange = 2
+	}
+	g.revealTilesFromPos(x, y, revealRange, u.owner)
+}
+
+func (g *GameState) runCombatBetween(u *Unit, o *Unit) {
+	attackerDamage := int(math.Round(float64(u.attack) * (float64(u.hp) / float64(u.maxHp))))
+	defenderDamage := int(math.Round(float64(o.defense) * (float64(o.hp) / float64(o.maxHp))))
+
+	o.hp -= attackerDamage
+	if o.hp > 0 {
+		u.hp -= defenderDamage
+		if u.hp <= 0 {
+			o.kills++
+		}
+	} else {
+		g.moveUnitTo(u, o.positionX, o.positionY)
+		u.kills++
+	}
 
 	delIndex := -1
 	for i := 0; i < len(g.units); i++ {
-		if &g.units[i] == attacker && attacker.hp <= 0 {
+		if &g.units[i] == u && u.hp <= 0 {
 			delIndex = i
 		}
 	}
@@ -212,7 +174,7 @@ func (g *GameState) runCombat(attacker *Unit, defender *Unit) {
 		slices.Delete(g.units, delIndex, delIndex+1)
 	}
 	for i := 0; i < len(g.units); i++ {
-		if &g.units[i] == defender && defender.hp <= 0 {
+		if &g.units[i] == o && o.hp <= 0 {
 			delIndex = i
 		}
 	}

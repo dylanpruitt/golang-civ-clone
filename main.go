@@ -61,7 +61,7 @@ type Log struct {
 
 type model struct {
 	uiState      UIState
-    gameState    GameState
+	gameState    GameState
 	cursorX      int
 	cursorY      int
 	selectedUnit *Unit
@@ -74,10 +74,10 @@ type model struct {
 
 func initialModel() model {
 	return model{
-		uiState: UIStateWaitingForInput,
-		gameState: initialGameState(),
-		cursorX: 5,
-		cursorY: 7,
+		uiState:      UIStateWaitingForInput,
+		gameState:    initialGameState(),
+		cursorX:      5,
+		cursorY:      7,
 		selectedUnit: nil,
 		help:         help.New(),
 		keys:         keys,
@@ -85,8 +85,8 @@ func initialModel() model {
 			message:        "",
 			hideNextUpdate: true,
 		},
-        screenWidth: 80,
-        screenHeight: 24,
+		screenWidth:  80,
+		screenHeight: 24,
 	}
 }
 
@@ -142,14 +142,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else if m.gameState.tileMap[m.cursorY][m.cursorX].validForAction {
 						unitOnTile := m.gameState.getUnitOnTile(m.cursorX, m.cursorY)
 						if unitOnTile != nil && unitOnTile.owner != m.selectedUnit.owner {
-							m.gameState.runCombat(m.selectedUnit, unitOnTile)
+							m.gameState.runCombatBetween(m.selectedUnit, unitOnTile)
 						} else {
-							m.selectedUnit.moveTo(m.cursorX, m.cursorY)
-							revealRange := 1
-							if m.gameState.tileMap[m.cursorY][m.cursorX].tileType == TileMountain {
-								revealRange = 2
-							}
-							m.gameState.revealTilesFromPos(m.cursorX, m.cursorY, revealRange, m.selectedUnit.owner)
+							m.gameState.moveUnitTo(m.selectedUnit, m.cursorX, m.cursorY)
 							m.log.message = "You move the Warrior."
 						}
 					}
