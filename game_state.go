@@ -10,15 +10,6 @@ import (
 const mapSizeX int = 30
 const mapSizeY int = 15
 
-type TileType int
-
-const (
-	TilePlains TileType = iota
-	TileMountain
-)
-
-const TileChars string = ".^"
-
 type Feature int
 
 const (
@@ -43,19 +34,6 @@ type City struct {
 	owner      *Civ
 	positionX  int
 	positionY  int
-}
-
-type Tile struct {
-	tileType       TileType
-	feature        Feature
-	city           *City
-	validForAction bool
-	discoveredBy   []int
-}
-
-func (t Tile) discoveredByPlayer() bool {
-	// assumes player ID will always be 0
-	return slices.Contains(t.discoveredBy, 0)
 }
 
 type GameState struct {

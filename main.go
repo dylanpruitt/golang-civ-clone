@@ -269,32 +269,15 @@ func (m model) getInfoPanel() string {
 	cursorTile := m.gameState.tileMap[m.cursorY][m.cursorX]
 	s := "Info\n"
 
+	tileString := cursorTile.getDescription()
 	if cursorTile.discoveredByPlayer() {
 		unitOnTile := m.gameState.getUnitOnTile(m.cursorX, m.cursorY)
 		if unitOnTile != nil {
-			s += m.describeUnit(unitOnTile)
+			tileString = m.describeUnit(unitOnTile) + tileString
 		}
-		if cursorTile.city != nil {
-			styledCityName := cursorTile.city.owner.tileStyle.Render(cursorTile.city.name)
-			s += styledCityName + "\n"
-		}
-		switch cursorTile.tileType {
-		case TilePlains:
-			s += "Plains\n  1 movement cost\n"
-		case TileMountain:
-			s += "Mountain\n  2 movement cost\n"
-		}
-		switch cursorTile.feature {
-		case FeatureVillage:
-			s += "Village\n  Move a unit here to capture"
-		case FeatureCrop:
-			s += "Crop\n  Can build a Farm here"
-		case FeatureFarm:
-			s += "Farm\n"
-		}
-	} else {
-		s += "??? - Unexplored Tile"
 	}
+
+	s += tileString
 
 	return s
 }
