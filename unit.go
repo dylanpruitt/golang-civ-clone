@@ -21,7 +21,7 @@ type Unit struct {
 	positionX  int
 	positionY  int
 	owner      *Civ
-	movePoints int
+	movePoints float64
 }
 
 func makeWarrior(x, y int, owner *Civ) Unit {
@@ -35,7 +35,7 @@ func makeWarrior(x, y int, owner *Civ) Unit {
 		positionX:  x,
 		positionY:  y,
 		owner:      owner,
-		movePoints: 2,
+		movePoints: 2.0,
 	}
 }
 
@@ -44,7 +44,7 @@ func (u Unit) getDescription(isSelected bool) string {
 	if isSelected {
 		s += " (Selected)"
 	}
-	s += fmt.Sprintf("\n  %d ATK %d DEF %d MOVE\n", u.attack, u.defense, u.movePoints)
+	s += fmt.Sprintf("\n  %d ATK %d DEF %d MOVE\n", u.attack, u.defense, int(u.movePoints))
 	if u.kills > 0 {
 		s += fmt.Sprintf("  %d/2 kills to promotion\n", u.kills)
 	}
@@ -52,7 +52,7 @@ func (u Unit) getDescription(isSelected bool) string {
 }
 
 func (u Unit) getCursorHint(isSelected bool) string {
-    s := u.owner.tileStyle.Render(u.name)
+	s := u.owner.tileStyle.Render(u.name)
 	if isSelected {
 		s += " (Selected)"
 	}

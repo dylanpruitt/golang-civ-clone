@@ -28,6 +28,7 @@ const TileChars string = ".^"
 type Tile struct {
 	tileType       TileType
 	feature        Feature
+	hasRoad        bool
 	city           *City
 	validForAction bool
 	discoveredBy   []int
@@ -52,6 +53,9 @@ func (t Tile) getDescription() string {
 		case TileMountain:
 			s += "Mountain\n  2 movement cost\n"
 		}
+		if t.hasRoad {
+			s += "Road\n  0.25 movement cost\n"
+		}
 		switch t.feature {
 		case FeatureVillage:
 			s += "Village\n  Move a unit here to capture"
@@ -74,6 +78,9 @@ func (t Tile) getCursorHint() string {
 		s += "Plains"
 	case TileMountain:
 		s += "Mountain"
+	}
+	if t.hasRoad {
+		s += ", Road"
 	}
 	switch t.feature {
 	case FeatureVillage:

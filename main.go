@@ -294,7 +294,7 @@ func (m model) getCursorHint() string {
 	if cursorTile.discoveredByPlayer() {
 		unitOnTile := m.gameState.getUnitOnTile(m.cursorX, m.cursorY)
 		if unitOnTile != nil {
-            isSelected := unitOnTile == m.selectedUnit
+			isSelected := unitOnTile == m.selectedUnit
 			s += unitOnTile.getCursorHint(isSelected)
 		}
 		if cursorTile.city != nil {

@@ -60,6 +60,12 @@ func initialGameState() GameState {
 	g.tileMap[4][3].tileType = TileMountain
 	g.tileMap[4][4].tileType = TileMountain
 	g.tileMap[6][7].feature = FeatureVillage
+	g.tileMap[5][5].hasRoad = true
+	g.tileMap[5][4].hasRoad = true
+	g.tileMap[4][3].hasRoad = true
+	g.tileMap[3][3].hasRoad = true
+	g.tileMap[2][3].hasRoad = true
+	g.tileMap[2][2].hasRoad = true
 	g.tileMap[8][8].feature = FeatureVillage
 	g.tileMap[8][9].feature = FeatureCrop
 	g.tileMap[8][10].feature = FeatureCrop
@@ -179,8 +185,8 @@ func tileInCityRange(x, y int, city City) bool {
 }
 
 type TileCost struct {
-	totalCost int
-	baseCost  int
+	totalCost float64
+	baseCost  float64
 }
 
 func (g *GameState) setValidMoveTilesForUnit(u *Unit) {
@@ -190,11 +196,11 @@ func (g *GameState) setValidMoveTilesForUnit(u *Unit) {
 	for i := 0; i < mapSizeY; i++ {
 		for j := 0; j < mapSizeX; j++ {
 			if i == u.positionY && j == u.positionX {
-				tileCosts[i][j].totalCost = 0
-				tileCosts[i][j].baseCost = 0
+				tileCosts[i][j].totalCost = 0.0
+				tileCosts[i][j].baseCost = 0.0
 				validTiles = append(validTiles, [2]int{u.positionX, u.positionY})
 			} else {
-				tileCosts[i][j].totalCost = 99
+				tileCosts[i][j].totalCost = 99.0
 				tileCosts[i][j].baseCost = g.getTileMoveCost(j, i, u)
 				g.tileMap[i][j].validForAction = false
 			}
@@ -231,18 +237,22 @@ func (g *GameState) setValidMoveTilesForUnit(u *Unit) {
 	}
 }
 
-func (g *GameState) getTileMoveCost(x, y int, u *Unit) int {
-	const IMPASSABLE int = 99
+func (g *GameState) getTileMoveCost(x, y int, u *Unit) float64 {
+	const IMPASSABLE float64 = 99.0
 	unitOnTile := g.getUnitOnTile(x, y)
 	if unitOnTile != nil && unitOnTile.owner == u.owner && (u.positionX != unitOnTile.positionX || u.positionY != unitOnTile.positionY) {
 		return IMPASSABLE
 	} else {
+		if g.tileMap[u.positionY][u.positionX].hasRoad && g.tileMap[y][x].hasRoad {
+			return 0.25
+		}
+
 		switch g.tileMap[y][x].tileType {
 		case TileMountain:
 			// TODO handle case where Mountains are impassable without Climbing tech
-			return 2
+			return 2.0
 		default:
-			return 1
+			return 1.0
 		}
 	}
 }
