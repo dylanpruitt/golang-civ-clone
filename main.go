@@ -273,24 +273,13 @@ func (m model) getInfoPanel() string {
 	if cursorTile.discoveredByPlayer() {
 		unitOnTile := m.gameState.getUnitOnTile(m.cursorX, m.cursorY)
 		if unitOnTile != nil {
-			tileString = m.describeUnit(unitOnTile) + tileString
+			isSelected := unitOnTile == m.selectedUnit
+			tileString = unitOnTile.getDescription(isSelected) + tileString
 		}
 	}
 
 	s += tileString
 
-	return s
-}
-
-func (m model) describeUnit(u *Unit) string {
-	s := fmt.Sprintf("%s %d/%d HP", u.owner.tileStyle.Render(u.name), u.hp, u.maxHp)
-	if m.selectedUnit != nil && u == m.selectedUnit {
-		s += " (Selected)"
-	}
-	s += fmt.Sprintf("\n  %d ATK %d DEF %d MOVE\n", u.attack, u.defense, u.movePoints)
-	if u.kills > 0 {
-		s += fmt.Sprintf("  %d/2 kills to promotion\n", u.kills)
-	}
 	return s
 }
 

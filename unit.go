@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type UnitType int
 
 const (
@@ -35,4 +37,16 @@ func makeWarrior(x, y int, owner *Civ) Unit {
 		owner:      owner,
 		movePoints: 2,
 	}
+}
+
+func (u Unit) getDescription(isSelected bool) string {
+	s := fmt.Sprintf("%s %d/%d HP", u.owner.tileStyle.Render(u.name), u.hp, u.maxHp)
+	if isSelected {
+		s += " (Selected)"
+	}
+	s += fmt.Sprintf("\n  %d ATK %d DEF %d MOVE\n", u.attack, u.defense, u.movePoints)
+	if u.kills > 0 {
+		s += fmt.Sprintf("  %d/2 kills to promotion\n", u.kills)
+	}
+	return s
 }
