@@ -144,7 +144,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if unitOnTile != nil && unitOnTile.owner != m.selectedUnit.owner {
 							m.gameState.runCombatBetween(m.selectedUnit, unitOnTile)
 						} else {
-							m.gameState.moveUnitTo(m.selectedUnit, m.cursorX, m.cursorY)
+							m.gameState.moveUnitOnPathTo(m.selectedUnit, m.cursorX, m.cursorY)
 							m.log.message = "You move the Warrior."
 						}
 					}
@@ -226,7 +226,7 @@ func (m model) View() string {
 				if unitOnTile != nil {
 					tileChar = UnitChars[unitOnTile.unitType]
 					if m.cursorX != j || m.cursorY != i {
-						textStyle = unitOnTile.owner.tileStyle
+                        textStyle = unitOnTile.owner.tileStyle
 						if unitOnTile == m.selectedUnit {
 							textStyle = textStyle.Foreground(highlightColor)
 						}

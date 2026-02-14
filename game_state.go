@@ -112,8 +112,36 @@ func (g *GameState) createCity(civ *Civ, x, y int) {
 	}
 
 	g.tileMap[y][x].feature = FeatureCity
+    g.tileMap[y][x].hasRoad = true
 	g.cultureBombTile(city, x, y)
 	g.revealTilesFromPos(x, y, 2, civ)
+}
+
+func (g *GameState) moveUnitOnPathTo(u *Unit, x, y int) {
+    goal := [2]int{y,x}
+    start := [2]int{u.positionY,u.positionX}
+    path := [][2]int{}
+    currentTile := goal
+
+    for currentTile != start {
+        t := g.tileMap[currentTile[0]][currentTile[1]]
+        if t.cameFrom == nil {
+            return
+        }
+        
+        path = append(path, currentTile)
+        currentTile = *t.cameFrom
+    }
+	u.positionX = x
+	u.positionY = y
+    
+    for i := len(path) - 1; i >= 0; i-- {
+        revealRange := 1
+        if g.tileMap[path[i][0]][path[i][1]].tileType == TileMountain {
+            revealRange = 2
+        }
+        g.revealTilesFromPos(path[i][1], path[i][0], revealRange, u.owner)
+    }
 }
 
 func (g *GameState) moveUnitTo(u *Unit, x, y int) {
@@ -209,6 +237,7 @@ func (g *GameState) setValidMoveTilesForUnit(u *Unit) {
 				tileCosts[i][j].baseCost = g.getTileMoveCost(j, i, u)
 				g.tileMap[i][j].validForAction = false
 			}
+            g.tileMap[i][j].cameFrom = nil
 		}
 	}
 
@@ -226,9 +255,10 @@ func (g *GameState) setValidMoveTilesForUnit(u *Unit) {
 						tc.totalCost = newTotalCost
 					}
 
-					tilePos := [2]int{tilePos[0] + j, tilePos[1] + i}
-					if tc.totalCost <= u.movePoints && !slices.Contains(validTiles, tilePos) {
-						validTiles = append(validTiles, tilePos)
+					newTilePos := [2]int{tilePos[0] + j, tilePos[1] + i}
+					if tc.totalCost <= u.movePoints && !slices.Contains(validTiles, newTilePos) {
+						validTiles = append(validTiles, newTilePos)
+                        g.tileMap[newTilePos[1]][newTilePos[0]].cameFrom = &[2]int{tilePos[1],tilePos[0]}
 					}
 				}
 			}

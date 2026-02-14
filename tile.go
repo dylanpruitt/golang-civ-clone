@@ -32,6 +32,7 @@ type Tile struct {
 	city           *City
 	validForAction bool
 	discoveredBy   []int
+    cameFrom *[2]int
 }
 
 func (t Tile) discoveredByPlayer() bool {
